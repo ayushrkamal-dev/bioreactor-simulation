@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Group 6 Microproject | Bioreactor Energy Balance Simulation</title>
+    <link rel="stylesheet" href="style.css" />
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <!-- Top App Navigation Bar -->
+    <header class="app-header">
+      <div class="header-branding">
+        <!-- Circular Cutout Logo Container -->
+        <div class="header-logo-container">
+          <img
+            src="logo.png"
+            alt="Project Logo"
+            class="circular-logo"
+            onerror="
+              this.style.display = 'none';
+              this.nextElementSibling.style.display = 'flex';
+            "
+          />
+          <!-- SVG fallback if logo.png is missing -->
+          <div class="header-icon-fallback" style="display: none">
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              stroke="currentColor"
+              fill="none"
+              stroke-width="2"
+            >
+              <path
+                d="M10 2v7.31L4.54 19.34A2 2 0 0 0 6.27 22h11.46a2 2 0 0 0 1.73-2.66L14 9.31V2h-4z"
+              />
+              <path d="M8.5 2h7" />
+              <path d="M7 16h10" />
+            </svg>
+          </div>
+        </div>
+
+        <div>
+          <div class="project-tag-row">
+            <span class="group-badge">GROUP 6 MICROPROJECT</span>
+            <span class="sub-accent">Alliance University</span>
+          </div>
+          <h1>Stirred-Tank Bioreactor Energy Balance Simulation</h1>
+          <p>
+            Anaerobic Ethanol Fermentation (<em>S. cerevisiae</em>) | First Law
+            Dynamic Model
+          </p>
+        </div>
+      </div>
+
+      <div class="header-meta">
+        <div class="meta-pill">
+          <span class="pill-label">BATCH TIME</span>
+          <strong id="clock-txt">0.00 h</strong>
+        </div>
+        <div class="meta-pill">
+          <span class="pill-label">STATUS</span>
+          <div class="status-wrapper">
+            <div class="live-dot" id="badge-dot"></div>
+            <strong id="status-txt">RUNNING</strong>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 3-Column Dashboard Body -->
+    <main class="dashboard-grid">
+      <!-- Column 1: Control Station & Energy Metrics -->
+      <div class="col-stack">
+        <!-- Control Panel -->
+        <section class="scada-panel">
+          <div class="panel-header">
+            <h2>Process Inputs &amp; Controls</h2>
+            <span class="panel-tag">PARAM-SET</span>
+          </div>
+
+          <div class="control-group">
+            <label for="cooling-mode">Cooling Control System</label>
+            <select id="cooling-mode">
+              <option value="pid">
+                PID Automatic Cooling (Target: 30.0°C)
+              </option>
+              <option value="manual">
+                Manual Coolant Flush (15.0°C Inlet)
+              </option>
+              <option value="off">Cooling Flow OFF</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <div class="range-labels">
+              <span>Agitation Speed (N)</span>
+              <span class="val-pill" id="rpm-label">120 RPM</span>
+            </div>
+            <input
+              type="range"
+              id="rpm-slider"
+              min="0"
+              max="600"
+              step="10"
+              value="120"
+            />
+          </div>
+
+          <div class="control-group">
+            <div class="range-labels">
+              <span>Ambient Temperature (T_amb)</span>
+              <span class="val-pill" id="tamb-label">25.0 °C</span>
+            </div>
+            <input
+              type="range"
+              id="tamb-slider"
+              min="10"
+              max="45"
+              step="0.5"
+              value="25.0"
+            />
+          </div>
+
+          <div class="control-group">
+            <div class="range-labels">
+              <span>Sparging Aeration (vvm)</span>
+              <span class="val-pill" id="air-label">1.0 vvm</span>
+            </div>
+            <input
+              type="range"
+              id="air-slider"
+              min="0"
+              max="2.5"
+              step="0.1"
+              value="1.0"
+            />
+          </div>
+
+          <div class="control-group">
+            <div class="range-labels">
+              <span>Time Acceleration</span>
+              <span class="val-pill highlight" id="accel-label">35x</span>
+            </div>
+            <input
+              type="range"
+              id="accel-slider"
+              min="1"
+              max="100"
+              step="1"
+              value="35"
+            />
+          </div>
+
+          <div class="action-btn-row">
+            <button class="btn btn-pause" id="pause-btn">
+              Pause Simulation
+            </button>
+            <button class="btn btn-reset" id="reset-btn">Reset Batch</button>
+          </div>
+        </section>
+
+        <!-- Energy Equation & Flux Terms -->
+        <section class="scada-panel">
+          <div class="panel-header">
+            <h2>First Law Thermal Flux</h2>
+            <span class="panel-tag">dE/dt</span>
+          </div>
+          <div class="equation-box">
+            <code>dE/dt = Q_met + W_agit - Q_cool - Q_loss</code>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-tile accent-met">
+              <span class="tile-label">Q_METABOLIC</span>
+              <strong class="tile-val" id="val-qmet">10.0 W</strong>
+            </div>
+            <div class="metric-tile accent-agit">
+              <span class="tile-label">W_AGITATION</span>
+              <strong class="tile-val" id="val-wagit">1.2 W</strong>
+            </div>
+            <div class="metric-tile accent-cool">
+              <span class="tile-label">Q_COOLING</span>
+              <strong class="tile-val" id="val-qcool">0.0 W</strong>
+            </div>
+            <div class="metric-tile accent-loss">
+              <span class="tile-label">Q_LOSS</span>
+              <strong class="tile-val" id="val-qloss">8.4 W</strong>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Column 2: Interactive SVG Vessel Dynamic Core -->
+      <section class="scada-panel reactor-column">
+        <div class="panel-header">
+          <h2>Bioreactor Dynamic Core</h2>
+          <span class="panel-tag live">ACTIVE VESSEL</span>
+        </div>
+
+        <div class="reactor-viewport">
+          <svg class="reactor-svg" viewBox="0 0 540 300">
+            <defs>
+              <linearGradient
+                id="brothGradient"
+                x1="0%"
+                y1="0%"
+                x2="0%"
+                y2="100%"
+              >
+                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.12" />
+                <stop offset="35%" stop-color="#f59e0b" stop-opacity="0.22" />
+                <stop offset="100%" stop-color="#b45309" stop-opacity="0.38" />
+              </linearGradient>
+
+              <linearGradient id="shaftGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#cbd5e1" />
+                <stop offset="50%" stop-color="#ffffff" />
+                <stop offset="100%" stop-color="#94a3b8" />
+              </linearGradient>
+            </defs>
+
+            <!-- Top Section: Header Text & Agitation Motor -->
+            <text
+              x="270"
+              y="22"
+              text-anchor="middle"
+              fill="#93c5fd"
+              class="svg-label-bold"
+            >
+              COOLING JACKET &amp; VESSEL CORE
+            </text>
+
+            <rect
+              x="248"
+              y="32"
+              width="44"
+              height="26"
+              rx="5"
+              fill="#1e293b"
+              stroke="#38bdf8"
+              stroke-width="2"
+            />
+            <circle cx="270" cy="45" r="4" fill="#38bdf8" />
+
+            <!-- Coolant Inflow (Bottom Left) -->
+            <text x="10" y="210" fill="#38bdf8" class="svg-label">
+              COOLANT IN (15.0°C)
+            </text>
+            <line
+              x1="10"
+              y1="228"
+              x2="160"
+              y2="228"
+              stroke="#0284c7"
+              stroke-width="9"
+              stroke-linecap="round"
+            />
+            <polygon points="150,223 162,228 150,233" fill="#38bdf8" />
+
+            <!-- Coolant Outflow (Top Right) -->
+            <text
+              x="530"
+              y="74"
+              id="svg-tco-text"
+              text-anchor="end"
+              fill="#38bdf8"
+              class="svg-label"
+            >
+              COOLANT OUT (15.0°C)
+            </text>
+            <line
+              x1="380"
+              y1="92"
+              x2="530"
+              y2="92"
+              stroke="#0284c7"
+              stroke-width="9"
+              stroke-linecap="round"
+            />
+            <polygon points="518,87 530,92 518,97" fill="#38bdf8" />
+
+            <!-- Outer Cooling Jacket Sleeve -->
+            <path
+              d="M 165 72 L 165 215 A 46 46 0 0 0 211 261 L 329 261 A 46 46 0 0 0 375 215 L 375 72"
+              fill="none"
+              stroke="#0284c7"
+              stroke-width="9"
+              stroke-linejoin="round"
+              opacity="0.85"
+            />
+
+            <!-- Inner Borosilicate Vessel Wall -->
+            <path
+              d="M 178 68 L 178 210 A 34 34 0 0 0 212 244 L 328 244 A 34 34 0 0 0 362 210 L 362 68 Z"
+              fill="#081426"
+              stroke="#38bdf8"
+              stroke-width="2.5"
+            />
+
+            <!-- Translucent Broth Liquid -->
+            <path
+              class="broth-liquid"
+              d="M 180 108 L 180 210 A 32 32 0 0 0 212 242 L 328 242 A 32 32 0 0 0 360 210 L 360 108 Z"
+              fill="url(#brothGradient)"
+            />
+
+            <!-- Liquid Level Meniscus Wave -->
+            <line
+              x1="180"
+              y1="108"
+              x2="360"
+              y2="108"
+              stroke="#fcd34d"
+              stroke-width="2"
+              stroke-dasharray="4, 3"
+              opacity="0.9"
+            />
+
+            <!-- Aeration Ring Sparger at Tank Bottom -->
+            <line
+              x1="225"
+              y1="234"
+              x2="315"
+              y2="234"
+              stroke="#94a3b8"
+              stroke-width="3"
+              stroke-linecap="round"
+            />
+            <circle cx="240" cy="234" r="1.8" fill="#e2e8f0" />
+            <circle cx="270" cy="234" r="1.8" fill="#e2e8f0" />
+            <circle cx="300" cy="234" r="1.8" fill="#e2e8f0" />
+
+            <!-- CENTRAL STAINLESS-STEEL AGITATOR SHAFT -->
+            <line
+              x1="270"
+              y1="58"
+              x2="270"
+              y2="230"
+              stroke="url(#shaftGrad)"
+              stroke-width="6"
+              stroke-linecap="round"
+            />
+
+            <!-- Dual Rushton Impeller Assemblies -->
+            <g class="impeller-group" id="blade-top">
+              <rect
+                x="232"
+                y="140"
+                width="76"
+                height="9"
+                rx="2"
+                fill="#f8fafc"
+                stroke="#475569"
+                stroke-width="1"
+              />
+              <rect
+                x="228"
+                y="134"
+                width="8"
+                height="21"
+                fill="#94a3b8"
+                rx="1.5"
+                stroke="#334155"
+                stroke-width="0.8"
+              />
+              <rect
+                x="304"
+                y="134"
+                width="8"
+                height="21"
+                fill="#94a3b8"
+                rx="1.5"
+                stroke="#334155"
+                stroke-width="0.8"
+              />
+            </g>
+
+            <g class="impeller-group" id="blade-bottom">
+              <rect
+                x="232"
+                y="188"
+                width="76"
+                height="9"
+                rx="2"
+                fill="#f8fafc"
+                stroke="#475569"
+                stroke-width="1"
+              />
+              <rect
+                x="228"
+                y="182"
+                width="8"
+                height="21"
+                fill="#94a3b8"
+                rx="1.5"
+                stroke="#334155"
+                stroke-width="0.8"
+              />
+              <rect
+                x="304"
+                y="182"
+                width="8"
+                height="21"
+                fill="#94a3b8"
+                rx="1.5"
+                stroke="#334155"
+                stroke-width="0.8"
+              />
+            </g>
+
+            <!-- Rising Micro-Bubbles -->
+            <g id="bubble-container">
+              <circle
+                class="bubble-anim bub-1"
+                cx="240"
+                cy="225"
+                r="2.8"
+                fill="#ffffff"
+              />
+              <circle
+                class="bubble-anim bub-2"
+                cx="290"
+                cy="228"
+                r="3.2"
+                fill="#ffffff"
+              />
+              <circle
+                class="bubble-anim bub-3"
+                cx="260"
+                cy="210"
+                r="2.2"
+                fill="#ffffff"
+              />
+              <circle
+                class="bubble-anim bub-4"
+                cx="305"
+                cy="218"
+                r="3.0"
+                fill="#ffffff"
+              />
+              <circle
+                class="bubble-anim bub-5"
+                cx="230"
+                cy="205"
+                r="2.4"
+                fill="#ffffff"
+              />
+            </g>
+          </svg>
+        </div>
+
+        <!-- Real-Time Physical Readings -->
+        <div class="metrics-grid">
+          <div class="metric-tile accent-cyan">
+            <span class="tile-label">BROTH TEMP (T)</span>
+            <strong class="tile-val" id="val-tbroth">29.67 °C</strong>
+          </div>
+          <div class="metric-tile accent-blue">
+            <span class="tile-label">COOLANT OUT (T_COUT)</span>
+            <strong class="tile-val" id="val-tcout">15.00 °C</strong>
+          </div>
+          <div class="metric-tile accent-green">
+            <span class="tile-label">BIOMASS (X)</span>
+            <strong class="tile-val" id="val-biomass">2.85 g/L</strong>
+          </div>
+          <div class="metric-tile accent-amber">
+            <span class="tile-label">GLUCOSE (S)</span>
+            <strong class="tile-val" id="val-glucose">84.6 g/L</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- Column 3: Telemetry Charts -->
+      <section class="scada-panel charts-column">
+        <div class="panel-header">
+          <h2>Dynamic Telemetry Profiles</h2>
+          <span class="panel-tag">REAL-TIME TRENDS</span>
+        </div>
+
+        <div class="charts-wrapper">
+          <div class="chart-container">
+            <canvas id="tempChart"></canvas>
+          </div>
+          <div class="chart-container">
+            <canvas id="bioChart"></canvas>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
