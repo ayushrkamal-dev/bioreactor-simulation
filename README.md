@@ -129,19 +129,30 @@ $$P = N_p \cdot \rho \cdot N^3 \cdot D_i^5 \implies W_{\text{agit}} \approx k_{\
 
 ### 3.4 External Heat Transfer Terms
 
-- **Environmental Heat Loss ($Q_{\text{loss}}$)**:
-  $$Q_{\text{loss}} = k_{\text{loss}} \cdot (T_{\text{broth}} - T_{\text{amb}})$$
-  Where $k_{\text{loss}} = 1.95\text{ W/K}$ and $T_{\text{amb}}$ is the room temperature.
+* **Environmental Heat Loss ($Q_{\text{loss}}$)**:
 
-- **PID-Controlled Jacket Cooling ($Q_{\text{cool}}$)**:
-  Targeting an optimal fermentation setpoint of $T_{\text{set}} = 30.0^\circ\text{C}$ with inlet coolant at $T_{\text{ci}} = 15.0^\circ\text{C}$:
+  $$Q_{\text{loss}} = k_{\text{loss}} \cdot (T_{\text{broth}} - T_{\text{amb}})$$
+
+  Where $k_{\text{loss}} = 1.95\text{ W/K}$ and $T_{\text{amb}}$ is the ambient room temperature.
+
+* **PID-Controlled Jacket Cooling ($Q_{\text{cool}}$)**:  
+  Targeting an optimal fermentation setpoint of $T_{\text{set}} = 30.0^\circ\text{C}$ with coolant entering at $T_{\text{ci}} = 15.0^\circ\text{C}$:
+
   $$e(t) = T_{\text{broth}} - T_{\text{set}}$$
+
   $$Q_{\text{demand}} = K_p \, e(t) + K_i \int_0^t e(\tau)\,d\tau$$
+
   $$Q_{\text{cool}} = \min\left(Q_{\text{demand}}, \; U A (T_{\text{broth}} - T_{\text{ci}})\right)$$
 
-- **Coolant Exit Temperature ($T_{\text{cout}}$)**:
+* **Coolant Exit Temperature ($T_{\text{cout}}$)**:  
+  From the steady-state coolant enthalpy balance across the jacket ($\dot{Q}_{\text{cool}} = \dot{m}_c \cdot C_{p,c} \cdot (T_{\text{cout}} - T_{\text{ci}})$):
+
   $$T_{\text{cout}} = T_{\text{ci}} + \frac{Q_{\text{cool}}}{\dot{m}_c \cdot C_{p,c}}$$
 
+  Where:
+  * $T_{\text{ci}} = 15.0^\circ\text{C}$ (Coolant inlet temperature)
+  * $\dot{m}_c$ = Coolant mass flow rate ($\text{kg/s}$)
+  * $C_{p,c} = 4184\text{ J}/(\text{kg}\cdot\text{K})$ (Coolant specific heat capacity)
 ---
 
 ## 4. Simulation Execution Logic & Data Flow
