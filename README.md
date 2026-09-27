@@ -36,28 +36,40 @@ This project delivers a real-time SCADA simulation representing a 5.0 L stirred-
 
 ## 2. Conceptual System Boundary Diagram
 
-++
-| BIOREACTOR SYSTEM BOUNDARY |
-| |
-| Coolant Inflow (T_ci = 15.0°C) |
-| | |
-| v |
-| +---------------+ [ Mechanical Drive Agitator ] |
-| | Cooling | | |
-| | Jacket | | Shaft Work |
-| | Sleeve | v (W_agit) |
-| | | +-------------------------+ |
-| | |<-------------| Fermentation Broth | |
-| | | Heat Flux | Volume: 5.0 Liters | |
-| | | (Q_cool) | Mass: 5000 grams |------> Q_loss
-| | | | Specific Heat: Cp | (Loss to Amb)
-| +---------------+ | | |
-| | | S. cerevisiae Growth | |
-| v | Metabolic Heat (Q_met) | |
-| Coolant Outflow (T_cout) +-------------------------+ |
-| |
-++
+```mermaid
+flowchart TD
+    subgraph Boundary ["BIOREACTOR SYSTEM BOUNDARY"]
+        direction TB
 
+        subgraph Inputs ["External Energy & Fluid Inputs"]
+            Inlet["Coolant Inflow<br/><b>T_ci = 15.0°C</b>"]
+            Motor["Mechanical Drive Agitator<br/><b>Shaft Work (W_agit)</b>"]
+        end
+
+        subgraph Core ["Vessel Reaction Core"]
+            Jacket["Cooling Jacket Sleeve<br/><b>Heat Removal (Q_cool)</b>"]
+            Broth["Fermentation Broth Volume<br/><b>V = 5.0 L | M = 5000 g</b><br/><i>S. cerevisiae</i> Catabolism<br/><b>Metabolic Heat (Q_met)</b>"]
+        end
+
+        subgraph Outputs ["Thermal Dissipation & Coolant Exit"]
+            Outlet["Coolant Outflow<br/><b>T_cout (°C)</b>"]
+            Loss["Ambient Heat Loss<br/><b>Convective Loss (Q_loss)</b>"]
+        end
+    end
+
+    Inlet -->|"Coolant Feed"| Jacket
+    Motor -->|"Viscous Shear W_agit"| Broth
+    Broth -->|"Convective Transfer Q_cool"| Jacket
+    Jacket -->|"Discharge"| Outlet
+    Broth -->|"Surface Convection Q_loss"| Loss
+
+    style Boundary fill:#071224,stroke:#38bdf8,stroke-width:2px,color:#f8fafc
+    style Inputs fill:#0b1b36,stroke:#1e40af,color:#e2e8f0
+    style Core fill:#0e2444,stroke:#38bdf8,color:#f8fafc
+    style Outputs fill:#0b1b36,stroke:#1e40af,color:#e2e8f0
+    style Broth fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#f8fafc
+    style Jacket fill:#0c4a6e,stroke:#38bdf8,stroke-width:2px,color:#f8fafc
+```
 ---
 
 ## 3. Thermodynamics & Biological Kinetics Core
@@ -134,52 +146,30 @@ $$P = N_p \cdot \rho \cdot N^3 \cdot D_i^5 \implies W_{\text{agit}} \approx k_{\
 
 ## 4. Simulation Execution Logic & Data Flow
 
-+-----------------------------+
-| Initialize State (t=0) |
-| T=29.67°C, X=2.85, S=84.6 |
-+-----------------------------+
-|
-v
-+-----------------------------+
-| Poll Real-Time Inputs |
-| RPM, Ambient T, Air, PID |
-+-----------------------------+
-|
-v
-+-------------------------------------------------------+
-| Differential Thermodynamics |
-| 1. mu = mu_max _ S / (Ks + S) |
-| 2. dX/dt = mu _ X ==> Q_met = (dX/dt) _ V _ dH |
-| 3. W_agit = k_agit _ N^2.9 |
-| 4. Q_loss = k_loss _ (T - T_amb) |
-| 5. Q_cool = PID_Compute(T - 30.0°C) |
-+-------------------------------------------------------+
-|
-v
-+-----------------------------+
-| Thermal Flux Summation |
-| dE/dt = Q_met+W_agit |
-| - Q_cool - Q_loss |
-+-----------------------------+
-|
-v
-+-----------------------------+
-| Numerical Time Stepping |
-| T += (dE/dt / M*Cp) * dt |
-| X += (dX/dt) _ dt |
-| S += (dS/dt) _ dt |
-+-----------------------------+
-|
-v
-+-----------------------------+
-| Update UI Components |
-| - SVG Dual Impeller Speed |
-| - Micro-bubble Aeration |
-| - Live Dual Chart.js Axes |
-+-----------------------------+
-|
-+---- Repeats via requestAnimationFrame()
+```mermaid
+flowchart TD
+    A(["Initialize Dynamic State (t = 0)<br/>T = 29.67°C, X = 2.85 g/L, S = 84.6 g/L"]) --> B["Poll Real-Time Process Inputs<br/>Agitation (N), Ambient (T_amb), Air (vvm), PID Mode"]
+    
+    B --> C["Compute Biological Kinetics (Monod)<br/>μ = μ_max · S / (K_s + S)<br/>dX/dt = μ · X<br/>dS/dt = -(1/Y_xs) · dX/dt"]
+    
+    C --> D["Evaluate First Law Thermal Fluxes (Watts)<br/>• Q_met = (dX/dt / 3600) · V · ΔH_rxn<br/>• W_agit = k_agit · N^2.9<br/>• Q_loss = k_loss · (T - T_amb)<br/>• Q_cool = PID_Compute(T - 30.0°C)"]
+    
+    D --> E["Sum Net Energy Flux<br/>dE/dt = Q_met + W_agit - Q_cool - Q_loss"]
+    
+    E --> F["Numerical Integration Step (Euler-Forward)<br/>T += (dE/dt / (M · Cp)) · Δt<br/>X += (dX/dt) · Δt<br/>S += (dS/dt) · Δt<br/>t += Δt"]
+    
+    F --> G["Render Dynamic SCADA Displays<br/>• Dual Rushton Impeller Rotation Rate<br/>• Aeration Sparger Micro-Bubble Stream<br/>• Live Multi-Axis Chart.js Profiles"]
+    
+    G -->|"Next Animation Frame (requestAnimationFrame)"| B
 
+    style A fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc
+    style B fill:#1e293b,stroke:#64748b,color:#f8fafc
+    style C fill:#1e293b,stroke:#22c55e,color:#f8fafc
+    style D fill:#1e293b,stroke:#f59e0b,color:#f8fafc
+    style E fill:#0c4a6e,stroke:#38bdf8,color:#f8fafc
+    style F fill:#1e293b,stroke:#a855f7,color:#f8fafc
+    style G fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc
+```
 ---
 
 ## 5. How to Run Locally
